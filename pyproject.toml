@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "scrap"
+version = "0.1.0"
+description = ""
+authors = ["emualliug1 <98762631+emualliug1@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.30.0"
+beautifulsoup4 = "^4.12.2"
+tqdm = "^4.65.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
