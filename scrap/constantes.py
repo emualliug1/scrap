@@ -5,5 +5,5 @@
 
 URL = "https://rubypayeur.com/annuaire/creations/regions/ile-de-france"
 URL_COMPANY = "https://rubypayeur.com"
-CSV_FILE = 'Scrap.csv'
+CSV_FILE = 'Scrap2.csv'
 MAX_THREADS = 10

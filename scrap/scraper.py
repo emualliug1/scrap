@@ -2,13 +2,13 @@
 #############################################
 # Programme Python type
 #############################################
-import requests
 from bs4 import BeautifulSoup
-import csv
-import scrap.constantes as SCRAP
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
 from tqdm import tqdm
+from scrap import URL, URL_COMPANY, CSV_FILE, MAX_THREADS
+import requests
+import time
+import csv
 #############################################
 
 
@@ -20,9 +20,10 @@ class Scraper:
         self.soup = BeautifulSoup(self.page.content, 'html.parser')
         self.scraping_url = []
 
-    def set_page(self, url: str):
+    def set_scraper(self, url: str):
         """
-        Changement d'url
+        Mise en place du scraper
+        :param url : Url ou l'on veut scraper des informations
         """
         self.url = url
         self.page = requests.get(url)
@@ -31,6 +32,7 @@ class Scraper:
     def get_max_pagination(self) -> int:
         """
         Recuperation des urls de pagination
+        :return: Le nombre maximum de pages de pagination du site
         """
         pagination_last = self.soup.find('li', class_='last').find('a')
         pagination_max = int(pagination_last['href'].split('/')[-1])
@@ -39,15 +41,17 @@ class Scraper:
     def create_pagination_links(self) -> list:
         """
         Creation des liens de pagination
+        :return: La totalité des liens de pagination des entreprises
         """
         pagination_links = []
         for pagination in range(1, self.get_max_pagination()):
-            pagination_links.append(SCRAP.URL + "/page/" + str(pagination))
+            pagination_links.append(URL + "/page/" + str(pagination))
         return pagination_links
 
     def get_company_links(self) -> list:
         """
         Recuperation des urls d'entreprise
+        :return: La totalité des liens sur une page de pagination
         """
         company_links = []
         directory_table = self.soup.find("table", class_="directory-table")
@@ -55,22 +59,25 @@ class Scraper:
             link = row.find("a")
             if link is not None:
                 href = link.get("href")
-                company_links.append(SCRAP.URL_COMPANY + href)
+                company_links.append(URL_COMPANY + href)
         return company_links
 
     def get_all_company_links(self) -> list:
         """
-        Recupereration de la totalite des liens d'entreprises
+        Recuperation de la totalité des liens d'entreprises
+        :return: La totalité des liens des entreprises
         """
         self.scraping_url = [entreprise_link for pagination_link in self.create_pagination_links()
-                              for entreprise_link in self.get_company_links()]
+                             for entreprise_link in self.get_company_links()]
         return self.scraping_url
 
-    def scrape(self, url: str) -> list:
+    def get_company_info(self, url: str) -> list:
         """
         Recuperation des informations d'une entreprise
+        :param url: Url ou l'on veut scraper des informations
+        :return: Toutes les informations scraper pour une entreprise
         """
-        self.set_page(url)
+        self.set_scraper(url)
         try:
             denomination = self.soup.find('td', text='Dénomination').find_next_sibling('td').text.strip()
         except AttributeError:
@@ -154,11 +161,13 @@ class Scraper:
 
         return company_data
 
-    def write_to_csv(self, data_list: list):
+    @staticmethod
+    def write_to_csv(data_list: list):
         """
         Ecrire les informations des entreprises dans un fichier csv"
+        :param data_list: La liste que l'on veut ecrire dans le fichier csv
         """
-        with open(SCRAP.CSV_FILE, 'w', newline='', encoding='utf-8') as file:
+        with open(CSV_FILE, 'w', newline='', encoding='utf-8') as file:
             writer = csv.DictWriter(file, fieldnames=data_list[0].keys())
             writer.writeheader()
             for data in data_list:
@@ -166,15 +175,14 @@ class Scraper:
 
     def run_async(self):
         """
-        lancement du programme en asynchrone
+        Lancement du programme en asynchrone
         """
         start = time.time()
-        self.get_max_pagination()
         self.get_all_company_links()
-        with ThreadPoolExecutor(max_workers=SCRAP.MAX_THREADS) as executor:
+        with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
             futures = []
             for company_link in self.scraping_url:
-                future = executor.submit(self.scrape, company_link)
+                future = executor.submit(self.get_company_info, company_link)
                 futures.append(future)
             results = []
             for data in tqdm(as_completed(futures), total=len(futures)):
@@ -185,6 +193,6 @@ class Scraper:
                 else:
                     results.extend(company_data)
 
-        self.write_to_csv(results)
+        Scraper.write_to_csv(results)
         end = time.time()
         print(f"{end - start} seconds pour scraper {len(self.scraping_url)} entreprise.")

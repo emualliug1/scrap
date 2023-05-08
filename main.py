@@ -2,8 +2,7 @@
 #############################################
 # Programme Python type
 #############################################
-from scrap.scraper import Scraper
-from scrap.constantes import URL
+from scrap import Scraper, URL
 #############################################
 
 if __name__ == '__main__':
